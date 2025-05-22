@@ -54,24 +54,97 @@ export default function CreateDiaryPage() {
     setPreviews(newPreviews);
   };
 
-  const generateDiary = () => {
+  const generateDiary = async () => {
     if (images.length === 0) return;
 
     setIsLoading(true);
 
-    // 실제로는 API 호출 등의 로직이 들어갈 자리
-    setTimeout(() => {
-      setGeneratedContent(
-        '오늘은 친구들과 함께 카페에서 만났다. 오랜만에 만난 친구들과 이야기를 나누며 즐거운 시간을 보냈다. 카페에서 맛있는 디저트도 먹고, 사진도 많이 찍었다. 날씨가 좋아서 카페 테라스에서 시간을 보냈는데, 햇살이 정말 따뜻했다. 이런 소소한 일상이 행복하다.'
-      );
+    try {
+      // FormData 객체 생성
+      const formData = new FormData();
+
+      // 이미지 파일 추가 (파일 배열로 전송)
+      images.forEach((image) => {
+        formData.append('images', image);
+      });
+
+      // 공개 설정 추가
+      formData.append('privacy', privacy);
+
+      // API 호출 - localhost:8080 사용
+      const response = await fetch('http://localhost:8080/api/images/process', {
+        method: 'POST',
+        body: formData,
+        // CORS 이슈가 있을 수 있으므로 필요한 경우 아래 옵션 추가
+        // credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('이미지 처리에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      console.log('이미지 처리 결과:', data);
+
+      // API 응답에서 생성된 일기 내용 설정
+      if (data.content) {
+        setGeneratedContent(data.content);
+      } else {
+        // 백엔드에서 일기 내용을 제공하지 않는 경우 기본 텍스트 설정
+        setGeneratedContent(
+          '오늘은 친구들과 함께 카페에서 만났다. 오랜만에 만난 친구들과 이야기를 나누며 즐거운 시간을 보냈다. 카페에서 맛있는 디저트도 먹고, 사진도 많이 찍었다. 날씨가 좋아서 카페 테라스에서 시간을 보냈는데, 햇살이 정말 따뜻했다. 이런 소소한 일상이 행복하다.'
+        );
+      }
+    } catch (error) {
+      console.error('이미지 처리 중 오류 발생:', error);
+      // 오류 처리 로직 (예: 사용자에게 알림)
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
-  const saveDiary = () => {
-    // 실제로는 API 호출 등의 로직이 들어갈 자리
-    console.log('일기 저장:', { content: generatedContent, privacy, images });
-    router.push('/diary/my');
+  const saveDiary = async () => {
+    if (images.length === 0) return;
+
+    try {
+      // 로딩 상태 설정
+      setIsLoading(true);
+
+      // FormData 객체 생성
+      const formData = new FormData();
+
+      // 이미지 파일 추가
+      images.forEach((image) => {
+        formData.append('images', image);
+      });
+
+      // 일기 내용 및 공개 설정 추가
+      formData.append('content', generatedContent);
+      formData.append('privacy', privacy);
+
+      // API 호출 - localhost:8080 사용
+      const response = await fetch('http://localhost:8080/api/diary', {
+        method: 'POST',
+        body: formData,
+        // CORS 이슈가 있을 수 있으므로 필요한 경우 아래 옵션 추가
+        // credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('일기 저장에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      console.log('일기 저장 성공:', data);
+
+      // 성공 시 일기 목록 페이지로 이동
+      router.push('/diary/my');
+    } catch (error) {
+      console.error('일기 저장 중 오류 발생:', error);
+      // 오류 처리 로직 (예: 사용자에게 알림)
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -153,7 +226,6 @@ export default function CreateDiaryPage() {
               </Select>
             </div>
           </CardContent>
-
           <CardFooter>
             <Button
               onClick={generateDiary}
