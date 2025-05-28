@@ -3,6 +3,8 @@ import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { v4 as uuidv4 } from "uuid"
 
+//이미지 나중에 TEXT까지 해서 저장하는 예시 API 나중에가서 바꿔야됨
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
