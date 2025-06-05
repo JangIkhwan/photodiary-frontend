@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -29,6 +30,7 @@ export default function CreateDiaryPage() {
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [generatedTitle, setGeneratedTitle] = useState(''); // 일기 제목 상태 추가
   const [generatedContent, setGeneratedContent] = useState('');
   const [privacy, setPrivacy] = useState('private');
 
@@ -66,7 +68,7 @@ export default function CreateDiaryPage() {
       });
       formData.append('privacy', privacy);
 
-      const response = await fetch('http://localhost:8080/api/images/upload', {
+      const response = await fetch('http://localhost:8080/diary/generate2', {
         method: 'POST',
         body: formData,
       });
@@ -78,10 +80,16 @@ export default function CreateDiaryPage() {
       const data = await response.json();
       console.log('이미지 처리 결과:', data);
 
-      if (data.success && data.content) {
-        setGeneratedContent(data.content);
-      } else {
-        setGeneratedContent('일기 내용이 생성되지 않았습니다.');
+      if (data.success) {
+        // API 응답에서 제목과 내용 설정
+        if (data.title) {
+          setGeneratedTitle(data.title);
+        }
+        if (data.content) {
+          setGeneratedContent(data.content);
+        } else {
+          setGeneratedContent('일기 내용이 생성되지 않았습니다.');
+        }
       }
     } catch (error) {
       console.error('이미지 처리 중 오류 발생:', error);
@@ -105,7 +113,8 @@ export default function CreateDiaryPage() {
         formData.append('images', image);
       });
 
-      // 일기 내용 및 공개 설정 추가
+      // 일기 제목, 내용 및 공개 설정 추가
+      formData.append('title', generatedTitle);
       formData.append('content', generatedContent);
       formData.append('privacy', privacy);
 
@@ -113,8 +122,6 @@ export default function CreateDiaryPage() {
       const response = await fetch('http://localhost:8080/api/diary', {
         method: 'POST',
         body: formData,
-        // CORS 이슈가 있을 수 있으므로 필요한 경우 아래 옵션 추가
-        // credentials: 'include',
       });
 
       if (!response.ok) {
@@ -198,20 +205,6 @@ export default function CreateDiaryPage() {
                 </div>
               </div>
             )}
-            <div className='mt-4'>
-              <Label htmlFor='privacy' className='block mb-2'>
-                공개 설정
-              </Label>
-              <Select value={privacy} onValueChange={setPrivacy}>
-                <SelectTrigger id='privacy'>
-                  <SelectValue placeholder='공개 설정 선택' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='friends'>친구에게 공개</SelectItem>
-                  <SelectItem value='private'>비공개</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
           <CardFooter>
             <Button
@@ -239,12 +232,42 @@ export default function CreateDiaryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea
-              placeholder="사진을 업로드하고 '일기 생성하기' 버튼을 클릭하면 여기에 일기가 생성됩니다."
-              value={generatedContent}
-              onChange={(e) => setGeneratedContent(e.target.value)}
-              className='min-h-[200px]'
-            />
+            <div className='space-y-4'>
+              <div>
+                <Label htmlFor='title'>일기 제목</Label>
+                <Input
+                  id='title'
+                  placeholder="사진을 업로드하고 '일기 생성하기' 버튼을 클릭하면 여기에 제목이 생성됩니다."
+                  value={generatedTitle}
+                  onChange={(e) => setGeneratedTitle(e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+              <div>
+                <Label htmlFor='content'>일기 내용</Label>
+                <Textarea
+                  id='content'
+                  placeholder="사진을 업로드하고 '일기 생성하기' 버튼을 클릭하면 여기에 일기가 생성됩니다."
+                  value={generatedContent}
+                  onChange={(e) => setGeneratedContent(e.target.value)}
+                  className='min-h-[200px] mt-1'
+                />
+              </div>
+              <div>
+                <Label htmlFor='privacy' className='block mb-2'>
+                  공개 설정
+                </Label>
+                <Select value={privacy} onValueChange={setPrivacy}>
+                  <SelectTrigger id='privacy'>
+                    <SelectValue placeholder='공개 설정 선택' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='friends'>친구에게 공개</SelectItem>
+                    <SelectItem value='private'>비공개</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardContent>
           <CardFooter>
             <Button
