@@ -9,17 +9,44 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/context/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth()
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 실제 로그인 로직은 구현하지 않음
-    console.log("로그인 시도:", { email, password })
-    router.push("/diary/my") // 로그인 후 내 일기 목록으로 이동
+
+    console.log("handleSubmit 호출됨")
+  
+    try {
+      console.log("fetch 요청 전")
+      const response = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+      console.log("fetch 요청 후")
+  
+      if (!response.ok) {
+        throw new Error("로그인 실패")
+      }
+  
+      const data = await response.json()
+      console.log("받은 데이터:", data)
+  
+      login(data.accessToken)
+      router.push("/diary/my")
+
+    } catch (error) {
+      console.error("로그인 에러:", error)
+      alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.")
+    }
   }
 
   return (

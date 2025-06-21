@@ -3,18 +3,21 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Menu, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/auth-context"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(true) // 기본값을 true로 변경
+  const { isLoggedIn, logout } = useAuth()
+  const router = useRouter()
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)
   }
 
-  // 로그인 상태 토글 (데모용)
-  const toggleLogin = () => {
-    setIsLoggedIn(!isLoggedIn)
+  const handleLogout = () => {
+    logout()
+    router.push("/login")
   }
 
   return (
@@ -40,7 +43,7 @@ export default function Navbar() {
                 <Link href="/friends" className="text-gray-600 hover:text-gray-900">
                   친구
                 </Link>
-                <button onClick={toggleLogin} className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
                   로그아웃
                 </button>
               </>
@@ -80,7 +83,7 @@ export default function Navbar() {
                 </Link>
                 <button
                   onClick={() => {
-                    toggleLogin()
+                    handleLogout()
                     toggleMenu()
                   }}
                   className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 text-left"
