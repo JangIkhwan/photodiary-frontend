@@ -26,7 +26,7 @@ export default function MyDiaryListPage() {
   const [error, setError] = useState("")
   const router = useRouter()
 
-  useEffect(() => {
+  useEffect(() => { 
     const fetchDiaries = async () => {
       const token = localStorage.getItem("token")
       if (!token) {
