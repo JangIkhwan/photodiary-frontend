@@ -1,34 +1,66 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Plus, Eye, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Edit, Eye, Plus } from "lucide-react"
 
-// 더미 데이터
-const diaries = [
-  {
-    id: 1,
-    title: "친구들과 카페에서",
-    date: "2025-05-05",
-    preview: "오늘은 친구들과 함께 카페에서 만났다. 오랜만에 만난 친구들과 이야기를 나누며...",
-    imageUrl: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: 2,
-    title: "한강 피크닉",
-    date: "2025-05-01",
-    preview: "날씨가 좋아서 한강으로 피크닉을 갔다. 강가에 돗자리를 펴고 앉아 도시락을 먹으며...",
-    imageUrl: "/placeholder.svg?height=200&width=300",
-  },
-  {
-    id: 3,
-    title: "전시회 관람",
-    date: "2025-04-28",
-    preview: "오늘은 미술관에서 열리는 전시회를 관람했다. 다양한 작품들을 보며 많은 영감을...",
-    imageUrl: "/placeholder.svg?height=200&width=300",
-  },
-]
+interface ImageResponseDto {
+  imageId: number
+  imageUrl: string
+}
+
+interface Diary {
+  diaryId: number
+  title: string
+  content: string
+  isPublic: boolean
+  images: ImageResponseDto[]
+}
 
 export default function MyDiaryListPage() {
+  const [diaries, setDiaries] = useState<Diary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchDiaries = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error("일기 목록을 불러오는 데 실패했습니다.")
+        }
+
+        const data = await response.json()
+        setDiaries(data)
+      } catch (err: any) {
+        setError(err.message || "문제가 발생했습니다.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDiaries()
+  }, [router])
+
+  if (loading) return <div className="text-center py-12">불러오는 중...</div>
+  if (error) return <div className="text-center py-12 text-red-500">{error}</div>
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
@@ -43,10 +75,10 @@ export default function MyDiaryListPage() {
       {diaries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {diaries.map((diary) => (
-            <Card key={diary.id} className="overflow-hidden">
+            <Card key={diary.diaryId} className="overflow-hidden">
               <div className="relative h-48">
                 <img
-                  src={diary.imageUrl || "/placeholder.svg"}
+                  src={diary.images[0]?.imageUrl || "/placeholder.svg"}
                   alt={diary.title}
                   className="w-full h-full object-cover"
                 />
@@ -54,18 +86,21 @@ export default function MyDiaryListPage() {
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h2 className="text-xl font-semibold">{diary.title}</h2>
-                  <span className="text-sm text-gray-500">{diary.date}</span>
+                  {/* 공개 여부 표시 */}
+                  <span className="text-sm text-gray-500">
+                    {diary.isPublic ? "공개" : "비공개"}
+                  </span>
                 </div>
-                <p className="text-gray-600 line-clamp-3">{diary.preview}</p>
+                <p className="text-gray-600 line-clamp-3">{diary.content}</p>
               </CardContent>
               <CardFooter className="flex justify-between p-4 pt-0">
-                <Link href={`/diary/my/${diary.id}`}>
+                <Link href={`/diary/my/${diary.diaryId}`}>
                   <Button variant="outline" size="sm">
                     <Eye className="mr-2 h-4 w-4" />
                     보기
                   </Button>
                 </Link>
-                <Link href={`/diary/my/${diary.id}/edit`}>
+                <Link href={`/diary/my/${diary.diaryId}/edit`}>
                   <Button variant="outline" size="sm">
                     <Edit className="mr-2 h-4 w-4" />
                     수정
@@ -88,3 +123,4 @@ export default function MyDiaryListPage() {
     </div>
   )
 }
+
