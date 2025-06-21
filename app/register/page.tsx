@@ -17,12 +17,37 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 실제 회원가입 로직은 구현하지 않음
-    console.log("회원가입 시도:", { username, email, password })
-    router.push("/login") // 회원가입 후 로그인 페이지로 이동
+  
+    if (password !== confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.")
+      return
+    }
+  
+    try {
+      const response = await fetch("http://localhost:8080/users/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, email, password }),
+      })
+  
+      const data = await response.json()
+  
+      if (!response.ok) {
+        throw new Error(data.message || "회원가입 실패")
+      }
+  
+      alert("회원가입이 완료되었습니다.")
+      router.push("/login")
+    } catch (error: any) {
+      console.error("회원가입 에러:", error)
+      alert(error.message || "회원가입 중 문제가 발생했습니다.")
+    }
   }
+  
 
   return (
     <div className="flex justify-center items-center min-h-[80vh]">
