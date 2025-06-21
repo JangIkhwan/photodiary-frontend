@@ -24,7 +24,7 @@ export default function LoginPage() {
   
     try {
       console.log("fetch 요청 전")
-      const response = await fetch("http://localhost:8080/auth/login", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
