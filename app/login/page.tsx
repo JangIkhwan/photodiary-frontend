@@ -26,6 +26,7 @@ export default function LoginPage() {
       console.log("fetch 요청 전")
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
