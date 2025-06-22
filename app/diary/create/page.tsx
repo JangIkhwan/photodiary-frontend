@@ -58,28 +58,38 @@ export default function CreateDiaryPage() {
 
   const generateDiary = async () => {
     if (images.length === 0) return;
-
+  
     setIsLoading(true);
-
+  
     try {
+      const token = localStorage.getItem("token");
+  
+      if (!token) {
+        console.error("토큰이 없습니다. 로그인 후 다시 시도해주세요.");
+        return;
+      }
+  
       const formData = new FormData();
       images.forEach((image) => {
-        formData.append('images', image);
+        formData.append("images", image);
       });
-      formData.append('privacy', privacy);
-
-      const response = await fetch('http://localhost:8080/diary/generate2', {
-        method: 'POST',
+      formData.append("privacy", privacy);
+  
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys/generate2`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`, 
+        },
         body: formData,
       });
-
+  
       if (!response.ok) {
-        throw new Error('이미지 처리에 실패했습니다.');
+        throw new Error("이미지 처리에 실패했습니다.");
       }
-
+  
       const data = await response.json();
-      console.log('이미지 처리 결과:', data);
-
+      console.log("이미지 처리 결과:", data);
+  
       if (data.success) {
         // API 응답에서 제목과 내용 설정
         if (data.title) {
@@ -88,58 +98,82 @@ export default function CreateDiaryPage() {
         if (data.content) {
           setGeneratedContent(data.content);
         } else {
-          setGeneratedContent('일기 내용이 생성되지 않았습니다.');
+          setGeneratedContent("일기 내용이 생성되지 않았습니다.");
         }
       }
     } catch (error) {
-      console.error('이미지 처리 중 오류 발생:', error);
+      console.error("이미지 처리 중 오류 발생:", error);
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   const saveDiary = async () => {
-    if (images.length === 0) return;
+    if (images.length === 0) {
+      console.error("이미지가 없습니다. 일기를 저장할 수 없습니다.");
+      return;
+    }
 
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("토큰이 없습니다. 로그인 후 다시 시도해주세요.");
+      return;
+    }
+
+    console.log(`save request url = ${process.env.NEXT_PUBLIC_API_BASE}/diarys`);
+    console.log("일기 저장 요청 보내기");
+  
     try {
       // 로딩 상태 설정
       setIsLoading(true);
-
+  
       // FormData 객체 생성
       const formData = new FormData();
-
+  
       // 이미지 파일 추가
       images.forEach((image) => {
-        formData.append('images', image);
+        formData.append("images", image);
       });
-
-      // 일기 제목, 내용 및 공개 설정 추가
-      formData.append('title', generatedTitle);
-      formData.append('content', generatedContent);
-      formData.append('privacy', privacy);
-
-      // API 호출 - localhost:8080 사용
-      const response = await fetch('http://localhost:8080/api/diary', {
-        method: 'POST',
+  
+      // 일기 제목, 내용 및 공개 설정 추가 (JSON으로 직렬화하여 request 파트로 추가)
+      const requestPayload = {
+        title: generatedTitle,
+        content: generatedContent,
+        privacy: privacy,
+      };
+  
+      formData.append(
+        "request",
+        new Blob([JSON.stringify(requestPayload)], { type: "application/json" })
+      );
+  
+      // API 호출 - 서버 주소는 환경 변수에서 가져옴
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
-
+  
       if (!response.ok) {
-        throw new Error('일기 저장에 실패했습니다.');
+        throw new Error("일기 저장에 실패했습니다.");
       }
-
+  
       const data = await response.json();
-      console.log('일기 저장 성공:', data);
-
+      console.log("일기 저장 성공:", data);
+  
       // 성공 시 일기 목록 페이지로 이동
-      router.push('/diary/my');
+      router.push("/diary/my");
     } catch (error) {
-      console.error('일기 저장 중 오류 발생:', error);
+      console.error("일기 저장 중 오류 발생:", error);
       // 오류 처리 로직 (예: 사용자에게 알림)
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className='container mx-auto py-8'>
@@ -271,7 +305,9 @@ export default function CreateDiaryPage() {
           </CardContent>
           <CardFooter>
             <Button
-              onClick={saveDiary}
+              onClick={ () => {
+                saveDiary();
+              }}
               disabled={!generatedContent || isLoading}
               className='w-full'
             >
