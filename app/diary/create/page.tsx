@@ -75,7 +75,7 @@ export default function CreateDiaryPage() {
       });
       formData.append("privacy", privacy);
   
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys/generate2`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys/generate`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`, 
