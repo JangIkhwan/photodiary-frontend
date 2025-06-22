@@ -1,34 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardHeader,
-  CardTitle,
+  CardContent,
   CardFooter,
+  CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Eye, ArrowLeft, Loader2 } from 'lucide-react';
 
-// API 응답 타입 정의
+// API 응답 타입
 interface Diary {
   diaryId: number;
   title: string;
   content: string;
-  images: { id: number; url: string }[];
+  images: { imageId: number; imageUrl: string }[];
   isPublic: boolean;
 }
 
 export default function FriendDiariesPage() {
   const { id: friendId } = useParams();
-  const router = useRouter();
-
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -41,31 +39,34 @@ export default function FriendDiariesPage() {
   useEffect(() => {
     async function fetchDiaries() {
       setIsLoading(true);
+      setError('');
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_BASE}/friends/diarys?friendId=${friendId}`,
-          {
-            method: 'GET',
-            headers: getAuthHeaders(),
-          }
+          { headers: getAuthHeaders() }
         );
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(
-            data.message || '일기 목록을 불러오는데 실패했습니다.'
-          );
+          // 상태 코드 404일 때 빈 배열 처리
+          if (res.status === 404) {
+            setDiaries([]);
+          } else {
+            throw new Error(
+              data.message || '일기 목록을 불러오는데 실패했습니다.'
+            );
+          }
+        } else {
+          setDiaries(data);
         }
-        setDiaries(data);
       } catch (err: any) {
         console.error('친구 일기 조회 오류:', err);
-        alert(err.message);
-        router.back();
+        setError(err.message);
       } finally {
         setIsLoading(false);
       }
     }
     if (friendId) fetchDiaries();
-  }, [friendId, router]);
+  }, [friendId]);
 
   return (
     <div className='container mx-auto py-8'>
@@ -83,13 +84,15 @@ export default function FriendDiariesPage() {
           <Loader2 className='h-6 w-6 animate-spin' />
           <span className='ml-2'>친구 일기를 불러오는 중...</span>
         </div>
+      ) : error ? (
+        <div className='text-center py-12 text-red-500'>{error}</div>
       ) : diaries.length > 0 ? (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
           {diaries.map((diary) => (
             <Card key={diary.diaryId} className='overflow-hidden'>
               <div className='relative h-48'>
                 <img
-                  src={diary.images[0]?.url || '/placeholder.svg'}
+                  src={diary.images[0]?.imageUrl || '/placeholder.svg'}
                   alt={diary.title}
                   className='w-full h-full object-cover'
                 />
@@ -115,8 +118,8 @@ export default function FriendDiariesPage() {
           ))}
         </div>
       ) : (
-        <div className='text-center py-12'>
-          <p className='text-gray-500'>공개된 일기가 없습니다.</p>
+        <div className='text-center py-12 text-gray-500'>
+          공개된 일기가 없습니다.
         </div>
       )}
     </div>
