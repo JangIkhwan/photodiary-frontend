@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,79 +16,127 @@ import {
   X,
   Clock,
   UserMinus,
+  Loader2,
 } from 'lucide-react';
 
-// 더미 데이터 구조를 API 응답에 맞게 변경
-const friends = [
-  {
-    id: 1,
-    name: '김민석',
-    email: 'minseok@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 2,
-    name: '남경식',
-    email: 'kyungsik@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-  {
-    id: 3,
-    name: '장익환',
-    email: 'ikhwan@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-  },
-];
+// 타입 정의
+interface Friend {
+  id: number;
+  name: string;
+  email: string;
+}
 
-// 받은 친구 요청 더미 데이터도 동일하게 변경
-const receivedRequests = [
-  {
-    id: 4,
-    name: '이영희',
-    email: 'younghee@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-    requestDate: '2025-01-20',
-  },
-  {
-    id: 5,
-    name: '박철수',
-    email: 'chulsoo@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-    requestDate: '2025-01-19',
-  },
-  {
-    id: 6,
-    name: '정미나',
-    email: 'mina@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-    requestDate: '2025-01-18',
-  },
-];
-
-// 보낸 친구 요청 더미 데이터도 동일하게 변경
-const sentRequests = [
-  {
-    id: 7,
-    name: '최수진',
-    email: 'sujin@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-    requestDate: '2025-01-20',
-    status: 'pending',
-  },
-  {
-    id: 8,
-    name: '김태현',
-    email: 'taehyun@example.com',
-    avatar: '/placeholder.svg?height=40&width=40',
-    requestDate: '2025-01-17',
-    status: 'pending',
-  },
-];
+interface FriendRequest {
+  id: number;
+  username: string;
+  email: string;
+  requestedAt?: string;
+  status?: string;
+}
 
 export default function FriendsPage() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [friendUsername, setFriendUsername] = useState('');
   const [activeTab, setActiveTab] = useState('friends');
+
+  // API 데이터 상태
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [receivedRequests, setReceivedRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
+
+  // 로딩 상태
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+  const [isLoadingReceived, setIsLoadingReceived] = useState(false);
+  const [isLoadingSent, setIsLoadingSent] = useState(false);
+
+  // API 호출 함수들
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
+  const fetchFriends = async () => {
+    setIsLoadingFriends(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE}/friends`,
+        {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('친구 목록을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setFriends(data);
+    } catch (error) {
+      console.error('친구 목록 조회 오류:', error);
+      // 에러 처리 로직 추가 가능
+    } finally {
+      setIsLoadingFriends(false);
+    }
+  };
+
+  const fetchReceivedRequests = async () => {
+    setIsLoadingReceived(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE}/friends/received`,
+        {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('받은 요청을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setReceivedRequests(data);
+    } catch (error) {
+      console.error('받은 요청 조회 오류:', error);
+    } finally {
+      setIsLoadingReceived(false);
+    }
+  };
+
+  const fetchSentRequests = async () => {
+    setIsLoadingSent(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE}/friends/sent`,
+        {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('보낸 요청을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setSentRequests(data);
+    } catch (error) {
+      console.error('보낸 요청 조회 오류:', error);
+    } finally {
+      setIsLoadingSent(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 모든 데이터 조회
+  useEffect(() => {
+    fetchFriends();
+    fetchReceivedRequests();
+    fetchSentRequests();
+  }, []);
 
   const handleAddFriend = () => {
     if (!friendUsername) return;
@@ -184,7 +232,12 @@ export default function FriendsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {friends.length > 0 ? (
+              {isLoadingFriends ? (
+                <div className='flex justify-center items-center py-8'>
+                  <Loader2 className='h-6 w-6 animate-spin' />
+                  <span className='ml-2'>친구 목록을 불러오는 중...</span>
+                </div>
+              ) : friends.length > 0 ? (
                 <div className='divide-y'>
                   {friends.map((friend) => (
                     <div
@@ -194,7 +247,7 @@ export default function FriendsPage() {
                       <div className='flex items-center gap-3'>
                         <Avatar>
                           <AvatarImage
-                            src={friend.avatar || '/placeholder.svg'}
+                            src='/placeholder.svg'
                             alt={friend.name}
                           />
                           <AvatarFallback>
@@ -246,7 +299,12 @@ export default function FriendsPage() {
               <CardTitle>받은 친구 요청</CardTitle>
             </CardHeader>
             <CardContent>
-              {receivedRequests.length > 0 ? (
+              {isLoadingReceived ? (
+                <div className='flex justify-center items-center py-8'>
+                  <Loader2 className='h-6 w-6 animate-spin' />
+                  <span className='ml-2'>받은 요청을 불러오는 중...</span>
+                </div>
+              ) : receivedRequests.length > 0 ? (
                 <div className='divide-y'>
                   {receivedRequests.map((request) => (
                     <div
@@ -256,21 +314,23 @@ export default function FriendsPage() {
                       <div className='flex items-center gap-3'>
                         <Avatar>
                           <AvatarImage
-                            src={request.avatar || '/placeholder.svg'}
-                            alt={request.name}
+                            src='/placeholder.svg'
+                            alt={request.username}
                           />
                           <AvatarFallback>
-                            {request.name.charAt(0)}
+                            {request.username.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className='font-medium'>{request.name}</p>
+                          <p className='font-medium'>{request.username}</p>
                           <p className='text-sm text-gray-500'>
                             {request.email}
                           </p>
-                          <p className='text-xs text-gray-400'>
-                            {request.requestDate}
-                          </p>
+                          {request.requestedAt && (
+                            <p className='text-xs text-gray-400'>
+                              {request.requestedAt}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className='flex gap-2'>
@@ -311,7 +371,12 @@ export default function FriendsPage() {
               <CardTitle>보낸 친구 요청</CardTitle>
             </CardHeader>
             <CardContent>
-              {sentRequests.length > 0 ? (
+              {isLoadingSent ? (
+                <div className='flex justify-center items-center py-8'>
+                  <Loader2 className='h-6 w-6 animate-spin' />
+                  <span className='ml-2'>보낸 요청을 불러오는 중...</span>
+                </div>
+              ) : sentRequests.length > 0 ? (
                 <div className='divide-y'>
                   {sentRequests.map((request) => (
                     <div
@@ -321,21 +386,23 @@ export default function FriendsPage() {
                       <div className='flex items-center gap-3'>
                         <Avatar>
                           <AvatarImage
-                            src={request.avatar || '/placeholder.svg'}
-                            alt={request.name}
+                            src='/placeholder.svg'
+                            alt={request.username}
                           />
                           <AvatarFallback>
-                            {request.name.charAt(0)}
+                            {request.username.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className='font-medium'>{request.name}</p>
+                          <p className='font-medium'>{request.username}</p>
                           <p className='text-sm text-gray-500'>
                             {request.email}
                           </p>
-                          <p className='text-xs text-gray-400'>
-                            {request.requestDate}
-                          </p>
+                          {request.requestedAt && (
+                            <p className='text-xs text-gray-400'>
+                              {request.requestedAt}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className='flex items-center gap-2'>
