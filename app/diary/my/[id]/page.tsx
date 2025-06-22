@@ -1,99 +1,126 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useParams } from "next/navigation"
-import { ArrowLeft, Edit } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Eye, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+  CardTitle,
+} from '@/components/ui/card';
 
-type Image = {
-  imageId: number
-  imageUrl: string
+// API 응답 타입
+interface Diary {
+  diaryId: number;
+  title: string;
+  content: string;
+  images: { imageId: number; imageUrl: string }[];
+  isPublic: boolean;
 }
 
-type Diary = {
-  diaryId: number
-  title: string
-  content: string
-  images: Image[]
-  isPublic: boolean
-}
+export default function FriendDiariesPage() {
+  const { id: friendId } = useParams();
+  const [diaries, setDiaries] = useState<Diary[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-export default function DiaryDetailPage({ params }: { params: { id: string } }) {
-  const id = params.id
-  const [diary, setDiary] = useState<Diary | null>(null)
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
+    };
+  };
+
   useEffect(() => {
-
-    const fetchDiary = async () => {
-      console.log(` 엔드포인트 : ${process.env.NEXT_PUBLIC_API_BASE}`)
+    async function fetchDiaries() {
+      setIsLoading(true);
+      setError('');
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/diarys/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        })
-        if (!res.ok) throw new Error("일기 불러오기 실패")
-        const data = await res.json()
-        setDiary(data)
-      } catch (err) {
-        console.error("일기 상세 조회 실패:", err)
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE}/friends/diarys?friendId=${friendId}`,
+          { headers: getAuthHeaders() }
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 404) {
+            setDiaries([]);
+          } else {
+            throw new Error(
+              data.message || '일기 목록을 불러오는데 실패했습니다.'
+            );
+          }
+        } else {
+          setDiaries(data);
+        }
+      } catch (err: any) {
+        console.error('친구 일기 조회 오류:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
     }
-
-    fetchDiary()
-  }, [id])
-
-  if (!diary) {
-    return <p className="text-center mt-10 text-gray-500">일기를 불러오는 중...</p>
-  }
+    if (friendId) fetchDiaries();
+  }, [friendId]);
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-6">
-        <Link href="/diary/my">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            목록으로
+    <div className='container mx-auto py-8'>
+      <div className='flex justify-between items-center mb-6'>
+        <Link href='/friends'>
+          <Button variant='outline' size='sm'>
+            <ArrowLeft className='mr-2 h-4 w-4' /> 친구 목록
           </Button>
         </Link>
+        <h1 className='text-2xl font-bold'>{`${friendId}님의 일기`}</h1>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <h1 className="text-2xl font-bold">{diary.title}</h1>
-            <span className="text-sm text-gray-500">{/* 날짜가 없다면 생략 */}</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {diary.images.map((image, index) => (
-              <div key={image.imageId} className="overflow-hidden rounded-md">
+      {isLoading ? (
+        <div className='flex justify-center items-center py-12'>
+          <Loader2 className='h-6 w-6 animate-spin' />
+          <span className='ml-2'>친구 일기를 불러오는 중...</span>
+        </div>
+      ) : error ? (
+        <div className='text-center py-12 text-red-500'>{error}</div>
+      ) : diaries.length > 0 ? (
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+          {diaries.map((diary) => (
+            <Card key={diary.diaryId} className='overflow-hidden'>
+              <div className='relative h-48'>
                 <img
-                  src={image.imageUrl || "/placeholder.svg"}
-                  alt={`일기 이미지 ${index + 1}`}
-                  className="w-full h-48 object-cover"
+                  src={diary.images[0]?.imageUrl || '/placeholder.svg'}
+                  alt={diary.title}
+                  className='w-full h-full object-cover'
                 />
               </div>
-            ))}
-          </div>
-
-          <div className="whitespace-pre-line text-gray-700">{diary.content}</div>
-
-          <div className="mt-4 text-sm text-gray-500">
-            공개 설정: {diary.isPublic ? "전체 공개" : "비공개"}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-end p-6 pt-0">
-          <Link href={`/diary/my/${diary.diaryId}/edit`}>
-            <Button>
-              <Edit className="mr-2 h-4 w-4" />
-              수정하기
-            </Button>
-          </Link>
-        </CardFooter>
-      </Card>
+              <CardHeader className='p-4'>
+                <CardTitle className='text-lg font-semibold'>
+                  {diary.title}
+                </CardTitle>
+                <p className='text-gray-600 line-clamp-3'>
+                  {diary.content.length > 80
+                    ? diary.content.substring(0, 80) + '...'
+                    : diary.content}
+                </p>
+              </CardHeader>
+              <CardFooter className='flex justify-end p-4 pt-0'>
+                <Link href={`/friends/${friendId}/diaries/${diary.diaryId}`}>
+                  <Button variant='outline' size='sm'>
+                    <Eye className='mr-2 h-4 w-4' /> 보기
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className='text-center py-12 text-gray-500'>
+          공개된 일기가 없습니다.
+        </div>
+      )}
     </div>
-  )
+  );
 }
-
