@@ -107,6 +107,7 @@ export default function CreateDiaryPage() {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
+  
         }
       );
       if (!res.ok) throw new Error('이미지 처리에 실패했습니다.');
