@@ -27,6 +27,7 @@ export default function FriendDiariesPage() {
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [friendName, setFriendName] = useState<string>('');
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -68,6 +69,24 @@ export default function FriendDiariesPage() {
     if (friendId) fetchDiaries();
   }, [friendId]);
 
+  useEffect(() => {
+    async function fetchFriend() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE}/friends/${friendId}`,
+          { headers: getAuthHeaders() }
+        );
+        if (!res.ok) throw new Error('친구 정보를 불러오는데 실패했습니다.');
+        const data = (await res.json()) as { username: string; name?: string };
+        setFriendName(data.username || data.name || '알 수 없음');
+      } catch (e: any) {
+        console.error(e);
+        setFriendName('알 수 없음');
+      }
+    }
+    if (friendId) fetchFriend();
+  }, [friendId]);
+
   return (
     <div className='container mx-auto py-8'>
       <div className='flex justify-between items-center mb-6'>
@@ -76,7 +95,7 @@ export default function FriendDiariesPage() {
             <ArrowLeft className='mr-2 h-4 w-4' /> 친구 목록
           </Button>
         </Link>
-        <h1 className='text-2xl font-bold'>{`${friendId}님의 일기`}</h1>
+        <h1 className='text-2xl font-bold'>{`${friendName}님의 일기`}</h1>
       </div>
 
       {isLoading ? (
