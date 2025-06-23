@@ -34,16 +34,45 @@ export default function CreateDiaryPage() {
   const [generatedContent, setGeneratedContent] = useState('');
   const [privacy, setPrivacy] = useState('private');
 
+  const [isDragging, setIsDragging] = useState(false); // 드래그 상태
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    const combined = [...images, ...droppedFiles].slice(0, 5); // 누적 후 최대 5장 제한
+    setImages(combined);
+    const newPreviews = combined.map((file) => URL.createObjectURL(file));
+    setPreviews(newPreviews);
+  };
+  
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const fileArray = Array.from(e.target.files).slice(0, 5);
-      setImages(fileArray);
+      const newFiles = Array.from(e.target.files);
+      const totalCount = images.length + newFiles.length;
 
-      // 이미지 미리보기 생성
-      const newPreviews = fileArray.map((file) => URL.createObjectURL(file));
+      if (totalCount > 5) {
+        alert("최대 5장까지 업로드할 수 있습니다.");
+      }
+
+      const combined = [...images, ...newFiles].slice(0, 5); // 누적 후 최대 5장 제한
+      setImages(combined);
+      const newPreviews = combined.map((file) => URL.createObjectURL(file));
       setPreviews(newPreviews);
     }
   };
+  
 
   const removeImage = (index: number) => {
     const newImages = [...images];
@@ -188,25 +217,32 @@ export default function CreateDiaryPage() {
           </CardHeader>
           <CardContent>
             <div className='mb-4'>
-              <Label htmlFor='images' className='cursor-pointer'>
-                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center'>
-                  <Upload className='h-10 w-10 text-gray-400 mb-2' />
-                  <p className='text-sm text-gray-500'>
-                    클릭하여 사진을 선택하거나 여기에 드래그하세요
-                  </p>
-                  <p className='text-xs text-gray-400 mt-1'>
-                    최대 5장, 파일 형식: JPG, PNG
-                  </p>
-                </div>
-                <input
-                  id='images'
-                  type='file'
-                  multiple
-                  accept='image/*'
-                  className='hidden'
-                  onChange={handleImageUpload}
-                />
-              </Label>
+            <Label htmlFor='images' className='cursor-pointer'>
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`border-2 rounded-lg p-6 flex flex-col items-center justify-center transition
+                  ${isDragging ? 'border-blue-400 bg-blue-50' : 'border-dashed border-gray-300'}
+                `}
+              >
+                <Upload className='h-10 w-10 text-gray-400 mb-2' />
+                <p className='text-sm text-gray-500'>
+                  클릭하여 사진을 선택하거나 <strong>여기에 드래그</strong>하세요
+                </p>
+                <p className='text-xs text-gray-400 mt-1'>
+                  최대 5장, 파일 형식: JPG, PNG
+                </p>
+              </div>
+              <input
+                id='images'
+                type='file'
+                multiple
+                accept='image/*'
+                className='hidden'
+                onChange={handleImageUpload}
+              />
+            </Label>
             </div>
 
             {previews.length > 0 && (
@@ -239,10 +275,10 @@ export default function CreateDiaryPage() {
               </div>
             )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col items-stretch space-y-2">
             <Button
               onClick={generateDiary}
-              disabled={images.length === 0 || isLoading}
+              disabled={images.length === 0 || images.length > 5 || isLoading}
               className='w-full'
             >
               {isLoading ? (
@@ -255,6 +291,9 @@ export default function CreateDiaryPage() {
               )}
             </Button>
           </CardFooter>
+          {images.length >= 5 && (
+              <p className="text-red-500 text-sm w-full pl-8">사진은 최대 5장까지만 업로드할 수 있습니다.</p>
+            )}
         </Card>
 
         <Card>
