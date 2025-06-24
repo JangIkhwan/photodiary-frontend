@@ -110,7 +110,22 @@ export default function CreateDiaryPage() {
   
         }
       );
-      if (!res.ok) throw new Error('이미지 처리에 실패했습니다.');
+      
+      if (res.status === 500) {
+        alert('서버 내부 오류입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+  
+      if (res.status === 400) {
+        const errorData = await res.json();
+        alert(errorData.message || '잘못된 요청입니다.');
+        return;
+      }
+  
+      if (!res.ok) {
+        alert('일기 생성에 실패했습니다.');
+        return;
+      }
 
       const data = await res.json();
       console.log('이미지 처리 결과:', data);
